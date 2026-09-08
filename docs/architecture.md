@@ -61,7 +61,8 @@ Journal dates use the user's local calendar context. `src/utils/dateUtils.ts` fo
 - A date is required.
 - A mood is required.
 - Content must contain non-whitespace text.
-- Content is limited to 5,000 characters.
+- Content is limited to 5,000 characters with native textarea enforcement.
+- The form displays a live character counter linked to the textarea for assistive technology.
 
 Successful saves and deletes use the shared toast provider. Deletes require the shared confirmation dialog, which supports cancellation and the Escape key.
 

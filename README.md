@@ -11,7 +11,7 @@ Daily Journal is a calm, local-first journaling application built with Vite, Rea
 - Delete entries with a confirmation dialog
 - Persist data in the browser's local storage
 - Validate dates, moods, and journal content before saving
-- Limit journal content to 5,000 characters
+- Show a live journal entry character counter and limit content to 5,000 characters
 
 ## Technology Stack
 

@@ -81,11 +81,13 @@ export function JournalEntryForm({
           id="entry-content"
           value={content}
           onChange={(event) => setContent(event.target.value.slice(0, MAX_CONTENT_LENGTH))}
+          maxLength={MAX_CONTENT_LENGTH}
           rows={10}
           placeholder="How was your day?"
+          aria-describedby="entry-content-count"
           className="w-full resize-y rounded-lg border border-border px-3 py-2 text-sm leading-relaxed"
         />
-        <span className="text-xs text-text-muted">
+        <span id="entry-content-count" className="text-xs text-text-muted">
           {content.length} / {MAX_CONTENT_LENGTH} characters
         </span>
       </div>
