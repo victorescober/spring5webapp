@@ -2,43 +2,54 @@
 
 ## Overview
 
-Daily Journal is a client-side React application. React Router selects the page, feature hooks coordinate UI state with services, and the journal service persists data through a single local storage service.
+Daily Journal is a single-page React application for journaling and mood tracking. The frontend is split between route-level pages, feature-specific modules, and a small persistence layer backed by the browser's localStorage.
 
 ```text
 Pages
-  -> journal hook
+  -> feature hook / UI components
     -> journal service
       -> storage service
-        -> browser localStorage
+        -> localStorage
 ```
 
-## Application Composition
+## Runtime composition
 
-`src/main.tsx` creates the React root and composes the application providers:
+The application bootstraps in `src/main.tsx`:
 
-- `BrowserRouter` supplies route navigation.
-- `ToastProvider` supplies transient success and error feedback.
-- `App` defines the navigation and page routes.
+- `BrowserRouter` enables client-side navigation
+- `ToastProvider` provides shared feedback messages
+- `App` defines the page routes and navigation shell
 
-`src/App.tsx` owns the route table and the shared top navigation. Route-level components live in `src/pages/`.
+`src/App.tsx` is the central route map. It renders the main navigation and the page-level views for the home, journals list, and entry editor.
 
-## Feature Boundaries
+## Feature boundaries
 
-The journal feature is under `src/features/journal/`:
+The journal feature lives under `src/features/journal/`:
 
-- `components/` contains the journal form, mood selector, and entry card.
-- `hooks/` exposes React state behavior through `useJournalEntries`.
-- `services/` contains journal operations such as create, update, lookup, and delete.
-- `constants.ts` defines the supported moods.
-- `utils.ts` contains journal-specific sorting behavior.
+- `components/` contains the journal card, form, and mood selector
+- `hooks/` contains stateful behavior exposed to pages
+- `services/` contains read/write logic for entries
+- `constants.ts` defines the mood options
+- `utils.ts` contains sorting and composition utilities
 
-Pages compose these pieces and handle navigation, toast messages, and delete confirmation. They do not write to localStorage directly.
+Pages stay focused on navigation and user actions. They do not read or write localStorage directly.
 
-## Persistence Model
+## Persistence layer
 
-The persistence boundary is `src/services/storageService.ts`. It owns the local storage key `daily-journal-app-data`, JSON parsing, default data, malformed data fallback, and serialization.
+`src/services/storageService.ts` owns the storage contract. It is responsible for:
 
-The stored shape is:
+- reading and writing the app payload
+- defaulting empty data
+- handling malformed JSON safely
+- serializing the application state
+
+The storage key is:
+
+```ts
+const STORAGE_KEY = 'daily-journal-app-data'
+```
+
+The persisted payload is:
 
 ```ts
 interface AppStorageData {
@@ -46,29 +57,57 @@ interface AppStorageData {
 }
 ```
 
-Each `JournalEntry` contains an ID, a local `YYYY-MM-DD` date, mood ID, content, creation timestamp, and update timestamp.
+`src/features/journal/services/journalService.ts` uses this storage boundary to enforce a single entry per local date. A save operation either updates the entry for an existing date or creates a new one with a generated UUID.
 
-The journal service enforces one entry per calendar date. Saving an existing date updates its mood, content, and `updatedAt`; saving a new date creates a UUID-backed entry.
+## Data model
 
-## Date Handling
+The shared `JournalEntry` model is defined in `src/types/index.ts`:
 
-Journal dates use the user's local calendar context. `src/utils/dateUtils.ts` formats dates without converting the calendar day through UTC, preventing timezone shifts for journal-day behavior.
+```ts
+interface JournalEntry {
+  id: string
+  date: string
+  moodId: MoodId
+  content: string
+  createdAt: string
+  updatedAt: string
+}
+```
 
-## Validation and Feedback
+This keeps journaling logic simple: each day maps to at most one journal record, and the date is treated as the canonical key.
 
-`JournalEntryForm` performs client-side validation before calling the journal service:
+## Date handling
 
-- A date is required.
-- A mood is required.
-- Content must contain non-whitespace text.
-- Content is limited to 5,000 characters with native textarea enforcement.
-- The form displays a live character counter linked to the textarea for assistive technology.
+The app uses local calendar dates for journaling behavior. Date formatting utilities avoid unnecessary UTC conversion so entries are associated with the user's local day instead of a shifted date across time zones.
 
-Successful saves and deletes use the shared toast provider. Deletes require the shared confirmation dialog, which supports cancellation and the Escape key.
+## Validation and UX
 
-## Testing
+The entry form validates before saving:
 
-Vitest runs in a jsdom environment configured in `vite.config.ts`. The current tests focus on the service and utility boundaries:
+- a date is required
+- a mood must be selected
+- content must contain non-whitespace text
+- content is bounded by the input UI and local logic
 
-- `src/features/journal/services/journalService.test.ts` verifies create, update-without-duplication, and delete behavior.
-- `src/utils/dateUtils.test.ts` verifies local date formatting and display formatting.
+The UI also shows toast feedback for successful save and delete actions. Destructive actions require a custom confirmation dialog rather than a native browser confirmation.
+
+## Testing strategy
+
+The project uses Vitest with a jsdom environment. The current tests focus on the behaviors that matter most to the journal domain:
+
+- journal creation and update logic
+- preventing duplicate entries for the same date
+- deletion behavior
+- local-date formatting utilities
+
+## Architectural intent
+
+This is intentionally a small, maintainable app with clear separation between:
+
+- pages
+- feature logic
+- shared UI elements
+- persistence logic
+- types and utilities
+
+That keeps the project easy to extend without introducing unnecessary abstractions or backend complexity.
